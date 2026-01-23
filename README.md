@@ -1,10 +1,11 @@
 # Hytale UDP Proxy
 A simple UDP proxy made in C++ for Windows, made because of Hytale multiplayers issues on dedicated servers, it could work with others applications.
 
-Only works for IPv4 adresses, haven't implemented IPv6.
-Press Ctrl+C once to stop.
+Notes:
+* Only works for IPv4 adresses, haven't implemented IPv6.
+* This is a bandaid fix for connections issues.
 
-Compile it using or whichever compiler you use.
+Compile it using whichever compiler you want.
 ```bashc
 g++ main.cpp -o <executable_name>.exe -lws2_32
 ```
@@ -31,7 +32,7 @@ Connect to it using `127.0.0.1` or `127.0.0.1:<port>` if you chose other port th
 
 <img width="429" height="250" alt="image" src="https://github.com/user-attachments/assets/cb1abd11-4adc-4317-b10e-7be39af6c948" />
 
-
+You can stop it by pressing Ctrl+C once to stop.
 ## Why did I make this?
 This was made because some of my friends had issues with Hytale multiplayer, in which they couldn't connect to a dedicated servers for them to play together. **Note: Affected devices were running Windows**.
 ### Why does Hytale have issues with servers connection (non-local or invitation code)?
