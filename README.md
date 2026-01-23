@@ -1,4 +1,4 @@
-# simple-udp-proxy
+# Hytale UDP Proxy
 A simple UDP proxy made in C++ for Windows, made because of Hytale multiplayers issues on dedicated servers, it could work with others applications.
 
 Only works for IPv4 adresses, haven't implemented IPv6.
