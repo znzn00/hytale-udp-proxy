@@ -6,7 +6,7 @@ Press Ctrl+C once to stop.
 
 Compile it using or whichever compiler you use.
 ```bashc
-g++ main.cpp -o proxy.exe -lws2_32
+g++ main.cpp -o <executable_name>.exe -lws2_32
 ```
 
 ## How to use?
