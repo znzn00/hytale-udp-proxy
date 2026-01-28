@@ -1,34 +1,6 @@
-#include <iostream>
-#include <string>
-#include <iostream>
-#include <thread>
-#include <string>
-#include <csignal>
-#include <chrono>
+#include "proxy_common.h"
 #include <regex>
-#include <atomic>
-
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600
-#elif _WIN32_WINNT < 0x0600
-#undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0600
-#endif
-
-// For Windows
-#ifdef _WIN32
-#include <winsock2.h>
-#include <WS2tcpip.h>
-#pragma comment(lib, "ws2_32.lib")
-// For Linux/macOS
-#else
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#endif
-// #include <unistd.h>
+#include "ipv4_proxy.h"
 
 std::atomic<bool> running{true};
 
@@ -38,14 +10,6 @@ void signalHandler(int signum)
     running = false;
 }
 
-int close_socket(SOCKET s)
-{
-#ifdef _WIN32
-    return closesocket(s);
-#else
-    return close(s);
-#endif
-}
 
 // Need to test it
 int connect_to_ipv6(int proxySocket, in6_addr serverIp6, int port)
@@ -167,231 +131,31 @@ int connect_to_ipv6(int proxySocket, in6_addr serverIp6, int port)
 
 std::atomic<bool> server_running{false};
 
-void manage_server_response_ipv4(int proxySocket, int serverSocket, sockaddr_in client, socklen_t client_len)
-{
-    if (!server_running)
-    {
-        server_running = true;
-    }
-    char buffer[2048];
-    while (server_running)
-    {
-        int n = recv(serverSocket, buffer, sizeof(buffer), 0);
-        if (n >= 0)
-        {
-            // buffer[n] = '\0';
-            int sends = sendto(proxySocket, buffer, n, 0, (sockaddr *)&client, client_len);
-            if (sends < 0)
-            {
-                std::cout << "IPv4: Why Failed to send to client." << std::endl;
-            }
-        }
-        else
-        {
-#ifdef _WIN32
-            if (WSAGetLastError() == WSAETIMEDOUT)
-#else
-            if (errno == EWOULDBLOCK || errno == EAGAIN)
-#endif
-            {
-                // std::cout << "Server timeout." << std::endl;
-            }
-        }
-    }
-}
-
-int connect_to_ipv4(int proxySocket, in_addr serverIp4, int port)
-{
-    char address[INET_ADDRSTRLEN];
-    if (inet_ntop(AF_INET, &serverIp4, address, sizeof(address)) == nullptr)
-    {
-        std::cerr << "inet_ntop failed: " << WSAGetLastError() << "\n";
-        return 1;
-    }
-
-    std::cout << "IPv4: Connecting to server " << address << ":" << port << std::endl;
-
-    int serverSocket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (serverSocket < 0)
-    {
-        std::cout << "IPv4: Server socket creation failed." << std::endl;
-        return 1;
-    }
-    sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    addr.sin_addr = serverIp4;
-    int s = connect(serverSocket, (sockaddr *)&addr, sizeof(addr));
-    if (s < 0)
-    {
-        std::cout << "IPv4: Couldn't connect to " << address << ":" << port << std::endl;
-        close_socket(serverSocket);
-        return 1;
-    }
-
-    sockaddr_in local_client{};
-    socklen_t local_client_len = sizeof(local_client);
-
-    if (getsockname(serverSocket, (sockaddr *)&local_client, &local_client_len) == 0)
-    {
-        char ip[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &local_client.sin_addr, ip, sizeof(ip));
-
-        uint16_t port = ntohs(local_client.sin_port);
-
-        std::cout << "IPv4: Connected to server with " << ip
-                  << ":" << port << "\n";
-    }
-
-    sockaddr_in firstClient{};
-    socklen_t firstClientLen = sizeof(firstClient);
-    sockaddr_in client{};
-    socklen_t clientLen = sizeof(client);
-    char buffer[2048];
-
-#ifdef _WIN32
-
-#else
-
-#endif
-
-#ifdef _WIN32
-    int timeoutMs = 10000;
-    setsockopt(serverSocket, SOL_SOCKET, SO_RCVTIMEO,
-               (char *)&timeoutMs, sizeof(timeoutMs));
-#else
-    struct timeval tv;
-    tv.tv_sec = 10;
-    tv.tv_usec = 0;
-
-    setsockopt(serverSocket, SOL_SOCKET, SO_RCVTIMEO,
-               (char *)&tv, sizeof(tv));
-#endif
-
-    std::cout << "IPv4: Waiting for a client connection..." << std::endl;
-
-    int n;
-
-    while (running)
-    {
-        n = recvfrom(
-            proxySocket,
-            buffer,
-            sizeof(buffer),
-            0,
-            (sockaddr *)&firstClient,
-            &firstClientLen);
-
-        if (n < 0)
-        {
-#ifdef _WIN32
-            if (WSAGetLastError() == WSAETIMEDOUT)
-#else
-            if (errno == EWOULDBLOCK || errno == EAGAIN)
-#endif
-            { // If there's a timeout, it can continue
-                continue;
-            }
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    if (!running)
-    {
-        std::cout << "IPv4: Disconnected from servers." << std::endl;
-        close_socket(serverSocket);
-        return 0;
-    }
-
-    if (inet_ntop(AF_INET, &firstClient.sin_addr, address, sizeof(address)) == nullptr)
-    {
-        std::cerr << "inet_ntop failed: " << WSAGetLastError() << "\n";
-        close_socket(serverSocket);
-        return 1;
-    }
-    std::cout << "IPv4: A client has connected: " << address << ":" << firstClient.sin_port << std::endl;
-
-    // std::cout << "IPv4: Waiting for a client connection..." << std::endl;
-    std::thread server_thing(manage_server_response_ipv4, proxySocket, serverSocket, firstClient,
-                             firstClientLen);
-
-    while (running)
-    {
-        int sentd = send(serverSocket,
-                         buffer,
-                         n,
-                         0);
-
-        if (sentd < 0)
-        {
-#ifdef _WIN32
-            std::cerr << "sendto failed: " << WSAGetLastError() << "\n";
-#else
-            perror("sendto");
-#endif
-        }
-
-        n = recvfrom(
-            proxySocket,
-            buffer,
-            sizeof(buffer),
-            0,
-            (sockaddr *)&client,
-            &clientLen);
-
-        if (client.sin_family != firstClient.sin_family ||
-            client.sin_port != firstClient.sin_port ||
-            client.sin_addr.s_addr != firstClient.sin_addr.s_addr)
-        {
-            std::cout << "IPv4: New client connected, it should only support one, stopping..." << std::endl;
-            break;
-        }
-
-        if (n < 0)
-        {
-#ifdef _WIN32
-            if (WSAGetLastError() == WSAETIMEDOUT)
-#else
-            if (errno == EWOULDBLOCK || errno == EAGAIN)
-#endif
-            { // If timeout, it's probable the connection dropped.
-                std::cout << "IPv4: Client " << address << ":" << firstClient.sin_port << " has been disconnected." << std::endl;
-                break;
-            }
-        }
-    }
-    std::cout << "IPv4: Waiting for server connection to drop..." << std::endl;
-    server_running = false;
-    server_thing.join();
-
-    close_socket(serverSocket);
-    std::cout << "IPv4: Server connection has been dropped." << std::endl;
-
-    return 0;
-}
-
 void connect_to_server(int proxySocket, int four, in_addr serverIp4,
                        int six, in6_addr serverIp6, int port)
 {
     int state = 1;
     // not working for now
-    // if (six && 0)
-    // {
-    //     state = connect_to_ipv6(proxySocket, serverIp6, port);
-    //     if (state)
-    //     {
-    //         std::cout << "IPv6: Couldn't connect to server.";
-    //     }
-    // }
+    if (six && 0)
+    {
+        state = connect_to_ipv6(proxySocket, serverIp6, port);
+        if (state)
+        {
+            std::cout << "IPv6: Couldn't connect to server.";
+        }
+    }
 
     if (four && state)
     {
-        connect_to_ipv4(proxySocket, serverIp4, port);
+        IPv4Proxy proxy(proxySocket);
+        proxy.connect(serverIp4, port);
+        if(running == false) {
+            proxy.disconnect();
+        }
+        // connect_to_ipv4(proxySocket, serverIp4, port);
     }
 }
+
 
 int main()
 {
