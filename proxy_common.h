@@ -8,7 +8,6 @@
 #include <iostream>
 #include <thread>
 #include <string>
-#include <csignal>
 #include <chrono>
 #include <atomic>
 

@@ -2,12 +2,11 @@
 A simple UDP proxy made in C++ for Windows, made because of Hytale's client connection issues for dedicated servers (only on Windows as far as I know), it could work with others applications.
 
 Notes:
-* Only works for IPv4 adresses, haven't implemented IPv6.
 * This is a bandaid fix for connections issues.
 
 Compile it using whichever compiler you want.
 ```bashc
-g++ main.cpp ipv4_proxy.cpp proxy_common.cpp -o <executable_name>.exe -lws2_32
+g++ main.cpp ipv4_proxy.cpp ipv6_proxy.cpp proxy_common.cpp -o <executable_name>.exe -lws2_32
 ```
 
 ## How to use?

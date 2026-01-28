@@ -1,165 +1,31 @@
 #include "proxy_common.h"
 #include <regex>
 #include "ipv4_proxy.h"
+#include "ipv6_proxy.h"
 
 std::atomic<bool> running{true};
-
-void signalHandler(int signum)
-{
-    std::cout << "Stopping proxy..." << std::endl;
-    running = false;
-}
-
-
-// Need to test it
-int connect_to_ipv6(int proxySocket, in6_addr serverIp6, int port)
-{
-    char address[INET6_ADDRSTRLEN];
-    if (inet_ntop(AF_INET6, &serverIp6, address, sizeof(address)) == nullptr)
-    {
-        std::cerr << "inet_ntop failed: " << WSAGetLastError() << "\n";
-        return 1;
-    }
-
-    std::cout << "IPv6: Connecting to [" << address << "]:" << port << std::endl;
-
-    int serverSocket = socket(AF_INET6, SOCK_DGRAM, 0);
-    if (serverSocket < 0)
-    {
-        std::cout << "IPv6: Server socket creation failed." << std::endl;
-        return 1;
-    }
-    sockaddr_in6 serverAddress{};
-    serverAddress.sin6_family = AF_INET6;
-    serverAddress.sin6_port = htons(port);
-    serverAddress.sin6_addr = serverIp6;
-    int s = connect(serverSocket, (sockaddr *)&serverAddress, sizeof(serverAddress));
-    if (s < 0)
-    {
-        std::cout << "IPv6: Couldn't connect to [" << address << "]:" << port << std::endl;
-        close_socket(serverSocket);
-        return 1;
-    }
-
-    std::cout << "IPv6: Couldn't connect to [" << address << "]:" << port << std::endl;
-    sockaddr_in firstClient{};
-    socklen_t firstClientLen = sizeof(firstClient);
-    sockaddr_in client{};
-    socklen_t clientLen = sizeof(client);
-    char buffer[2048];
-
-#ifdef _WIN32
-    int timeoutMs = 0;
-    setsockopt(proxySocket, SOL_SOCKET, SO_RCVTIMEO,
-               (char *)&timeoutMs, sizeof(timeoutMs));
-#else
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 0;
-
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,
-               (char *)&tv, sizeof(tv));
-#endif
-
-    std::cout << "IPv6: Waiting for a client connection..." << std::endl;
-
-    int n = recvfrom(
-        proxySocket,
-        buffer,
-        sizeof(buffer),
-        0,
-        (sockaddr *)&firstClient,
-        &firstClientLen);
-
-#ifdef _WIN32
-    timeoutMs = 5000; // 5 seconds
-    setsockopt(proxySocket, SOL_SOCKET, SO_RCVTIMEO,
-               (char *)&timeoutMs, sizeof(timeoutMs));
-#else
-
-    tv.tv_sec = 5;
-    tv.tv_usec = 0;
-
-    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,
-               (char *)&tv, sizeof(tv));
-#endif
-
-    while (true)
-    {
-        int sent = sendto(serverSocket,
-                          buffer,
-                          strlen(buffer),
-                          0,
-                          (sockaddr *)&client,
-                          sizeof(client));
-
-        if (sent < 0)
-        {
-#ifdef _WIN32
-            std::cerr << "sendto failed: " << WSAGetLastError() << "\n";
-#else
-            perror("sendto");
-#endif
-        }
-
-        n = recvfrom(
-            proxySocket,
-            buffer,
-            sizeof(buffer),
-            0,
-            (sockaddr *)&firstClient,
-            &firstClientLen);
-
-        if (n < 0)
-        {
-#ifdef _WIN32
-            if (WSAGetLastError() == WSAETIMEDOUT)
-            {
-                // timeout occurred
-            }
-#else
-            if (errno == EWOULDBLOCK || errno == EAGAIN)
-            {
-                // timeout occurred
-            }
-#endif
-        }
-    }
-
-    return 0;
-}
-
-std::atomic<bool> server_running{false};
 
 void connect_to_server(int proxySocket, int four, in_addr serverIp4,
                        int six, in6_addr serverIp6, int port)
 {
     int state = 1;
-    // not working for now
-    if (six && 0)
+    if (six)
     {
-        state = connect_to_ipv6(proxySocket, serverIp6, port);
-        if (state)
-        {
-            std::cout << "IPv6: Couldn't connect to server.";
-        }
+        IPv6Proxy proxy(proxySocket);
+        proxy.connect(serverIp6, port);
     }
 
     if (four && state)
     {
         IPv4Proxy proxy(proxySocket);
         proxy.connect(serverIp4, port);
-        if(running == false) {
-            proxy.disconnect();
-        }
+
         // connect_to_ipv4(proxySocket, serverIp4, port);
     }
 }
 
-
 int main()
 {
-    std::signal(SIGINT, signalHandler);
 #ifdef _WIN32
     WSAData wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
