@@ -1,6 +1,10 @@
 #include "ipv4_proxy.h"
 #include "proxy_common.h"
 
+IPv4Proxy::IPv4Proxy(int proxySocket) {
+    this->proxySocket = proxySocket;
+}
+
 void IPv4Proxy::manage_server_response(int serverSocket, sockaddr_in client, socklen_t client_len)
 {
     char buffer[2048];
@@ -133,6 +137,7 @@ int IPv4Proxy::connect(in_addr serverIp4, int port)
                 if (errno == EWOULDBLOCK || errno == EAGAIN)
 #endif
                 { // If there's a timeout, it can continue
+                    std::cout << "IPv4: Waiting for a client connection timeout." << std::endl;
                     continue;
                 }
             }
@@ -214,7 +219,7 @@ int IPv4Proxy::connect(in_addr serverIp4, int port)
 
 int IPv4Proxy::disconnect()
 {
-    if (this->running || this->state == PROXY_IDDLE)
+    if (!this->running || this->state == PROXY_IDDLE)
     {
         return 1;
     }

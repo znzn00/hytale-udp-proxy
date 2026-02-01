@@ -1,13 +1,17 @@
 #include "ipv6_proxy.h"
 #include "proxy_common.h"
 
-void IPv6Proxy::manage_server_response(int serverSocket, sockaddr_in client, socklen_t client_len)
+IPv6Proxy::IPv6Proxy(int proxySocket)
+{
+    this->proxySocket = proxySocket;
+}
+
+void IPv6Proxy::manage_server_response(int serverSocket, sockaddr_in6 client, socklen_t client_len)
 {
     char buffer[2048];
     while (this->running && this->state == PROXY_ESTABLISHED)
     {
         int n = recv(serverSocket, buffer, sizeof(buffer), 0);
-        std::cout << "IPv6: Server " << n << std::endl;
         if (n >= 0)
         {
             // buffer[n] = '\0';
@@ -71,23 +75,23 @@ int IPv6Proxy::connect(in6_addr serverIp6, int port)
         return 1;
     }
 
-    sockaddr_in local_client{};
+    sockaddr_in6 local_client{};
     socklen_t local_client_len = sizeof(local_client);
 
     if (getsockname(serverSocket, (sockaddr *)&local_client, &local_client_len) == 0)
     {
         char ip[INET6_ADDRSTRLEN];
-        inet_ntop(AF_INET6, &local_client.sin_addr, ip, sizeof(ip));
+        inet_ntop(AF_INET6, &local_client.sin6_addr, ip, sizeof(ip));
 
-        uint16_t port = ntohs(local_client.sin_port);
+        uint16_t port = ntohs(local_client.sin6_port);
 
         std::cout << "IPv6: Connected to server with [" << ip
                   << "]:" << port << "\n";
     }
 
-    sockaddr_in firstClient{};
+    sockaddr_in6 firstClient{};
     socklen_t firstClientLen = sizeof(firstClient);
-    sockaddr_in client{};
+    sockaddr_in6 client{};
     socklen_t clientLen = sizeof(client);
     char buffer[2048];
 
@@ -144,13 +148,13 @@ int IPv6Proxy::connect(in6_addr serverIp6, int port)
             }
         }
 
-        if (inet_ntop(AF_INET6, &firstClient.sin_addr, address, sizeof(address)) == nullptr)
+        if (inet_ntop(AF_INET6, &firstClient.sin6_addr, address, sizeof(address)) == nullptr)
         {
             std::cerr << "inet_ntop failed: " << WSAGetLastError() << "\n";
             // close_socket(serverSocket);
             // return 1;
         }
-        std::cout << "IPv6: A client has connected: [" << address << "]:" << firstClient.sin_port << std::endl;
+        std::cout << "IPv6: A client has connected: [" << address << "]:" << firstClient.sin6_port << std::endl;
 
         // std::cout << "IPv6: Waiting for a client connection..." << std::endl;
         std::thread server_thing(&IPv6Proxy::manage_server_response, this, serverSocket, firstClient,
@@ -180,9 +184,9 @@ int IPv6Proxy::connect(in6_addr serverIp6, int port)
                 (sockaddr *)&client,
                 &clientLen);
 
-            if (client.sin_family != firstClient.sin_family ||
-                client.sin_port != firstClient.sin_port ||
-                client.sin_addr.s_addr != firstClient.sin_addr.s_addr)
+            if (client.sin6_scope_id != firstClient.sin6_scope_id ||
+                client.sin6_port != firstClient.sin6_port ||
+                memcmp(&client.sin6_addr, &firstClient.sin6_addr, sizeof(struct in6_addr)) != 0)
             {
                 std::cout << "IPv6: New client connected, it should only support one, stopping..." << std::endl;
                 this->state = PROXY_READY;
@@ -196,7 +200,7 @@ int IPv6Proxy::connect(in6_addr serverIp6, int port)
                 if (errno == EWOULDBLOCK || errno == EAGAIN)
 #endif
                 { // If timeout, it's probable the connection dropped.
-                    std::cout << "IPv6: Client " << address << ":" << firstClient.sin_port << " has been disconnected." << std::endl;
+                    std::cout << "IPv6: Client [" << address << "]:" << firstClient.sin6_port << " has been disconnected." << std::endl;
                     this->state = PROXY_READY;
                 }
             }
@@ -214,7 +218,7 @@ int IPv6Proxy::connect(in6_addr serverIp6, int port)
 
 int IPv6Proxy::disconnect()
 {
-    if (this->running || this->state == PROXY_IDDLE)
+    if (!this->running || this->state == PROXY_IDDLE)
     {
         return 1;
     }

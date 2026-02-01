@@ -5,11 +5,9 @@
 #include <atomic>
 #include <iostream>
 #include <string>
-#include <iostream>
 #include <thread>
-#include <string>
 #include <chrono>
-#include <atomic>
+#include <utility>
 
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600
@@ -39,6 +37,21 @@ using socket_t = int;
 #define PROXY_ESTABLISHED 3   // Proxy has connected the client and is starting to send to server.
 #define PROXY_DISCONNECTING 4 // Proxy is clearing.
 
+#define PROXY_DEFAULT_PORT 9520
+
 int close_socket(socket_t s);
+
+int test_ipv4_quic(in_addr ipv4, int port);
+int test_ipv6_quic(in6_addr ipv6, int port);
+
+enum eAddressType
+{
+    IPv4,
+    IPv6,
+    Domain,
+    Invalid
+};
+
+std::tuple<eAddressType, std::string, int> resolve_server_address(std::string address);
 
 #endif

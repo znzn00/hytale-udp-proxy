@@ -12,11 +12,7 @@ private:
     void manage_server_response(int serverSocket, sockaddr_in client, socklen_t client_len);
 
 public:
-    IPv4Proxy(int proxySocket)
-    {
-        this->proxySocket = proxySocket;
-    }
-
+    IPv4Proxy(int proxySocket);
     int connect(in_addr serverIp4, int port);
     int disconnect();
 };

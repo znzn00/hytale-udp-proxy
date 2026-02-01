@@ -4,9 +4,12 @@ A simple UDP proxy made in C++ for Windows, made because of Hytale's client conn
 Notes:
 * This is a bandaid fix for connections issues.
 
-Compile it using whichever compiler you want.
+Compile it using whichever compiler you want. But make sure to have the next libraries installed:
+* wxWidgets 3.2.9
+* SQLite3 3.51.2
+
 ```bashc
-g++ main.cpp ipv4_proxy.cpp ipv6_proxy.cpp proxy_common.cpp -o <executable_name>.exe -lws2_32
+g++ main.cpp ipv4_proxy.cpp ipv6_proxy.cpp proxy_common.cpp -o <executable_name>.exe -I"%WXWIN%\include" -I"%WXWIN%\lib\gcc_dll\mswud" -L"%WXWIN%\lib\gcc_dll" -lws2_32 -D__WXMSW__ -DUNICODE -DWXUSINGDLL -lwxmsw32ud_core -lwxbase32u
 ```
 
 ## How to use?

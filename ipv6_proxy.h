@@ -9,14 +9,10 @@ private:
     int proxySocket;
     std::atomic<int> state{PROXY_IDDLE};
     std::atomic<bool> running{false};
-    void manage_server_response(int serverSocket, sockaddr_in client, socklen_t client_len);
+    void manage_server_response(int serverSocket, sockaddr_in6 client, socklen_t client_len);
 
 public:
-    IPv6Proxy(int proxySocket)
-    {
-        this->proxySocket = proxySocket;
-    }
-
+    IPv6Proxy(int proxySocket);
     int connect(in6_addr serverIp6, int port);
     int disconnect();
 };
