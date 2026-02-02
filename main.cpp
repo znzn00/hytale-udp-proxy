@@ -67,6 +67,7 @@ private:
     void MoveServerRecord(wxThreadEvent &event);
     void ConnectFromServerRecord(wxThreadEvent &event);
     void DeleteServerRecord(wxThreadEvent &event);
+
     int CreateProxySocket(int port);
 };
 
@@ -82,6 +83,8 @@ private:
 public:
     ServerWidget(wxWindow *parent, ServerRecord record);
     int GetRecordId();
+    ServerRecord GetRecord();
+    void ExchangeRecordId(ServerWidget *other);
 };
 
 class DeleteServerRecordDialog : public wxDialog
@@ -96,9 +99,19 @@ public:
 
 wxIMPLEMENT_APP(MyApp);
 
+void ServerWidget::ExchangeRecordId(ServerWidget *other)
+{
+    std::swap(this->record.id, other->record.id);
+}
+
 int ServerWidget::GetRecordId()
 {
     return this->record.id;
+}
+
+ServerRecord ServerWidget::GetRecord()
+{
+    return this->record;
 }
 
 DeleteServerRecordDialog::DeleteServerRecordDialog(ServerRecord record,
@@ -267,15 +280,117 @@ void MainFrame::MoveServerRecord(wxThreadEvent &event)
 {
     wxObject *origin = event.GetEventObject();
     ServerWidget *panel = wxDynamicCast(origin, ServerWidget);
+
     if (!panel)
     {
         return;
     }
+    int target = -1;
+    wxBoxSizer *server_sizer = (wxBoxSizer *)this->server_list->GetSizer();
+    int limit = (int)server_sizer->GetItemCount();
+
+    for (int i = 0; i < limit; i++)
+    {
+        if (server_sizer->GetItem(i)->GetWindow() == panel)
+        {
+            target = i;
+            break;
+        }
+    }
+
+    if (target == -1)
+    {
+        return;
+    }
+
     int move = event.GetInt();
+
+    ServerWidget *exchange = NULL;
+    int other;
 
     if (move == SERVER_MOVE_UP)
     {
+        if (target == 0) // it's already on top
+        {
+            return;
+        }
+        other = target - 1;
+        exchange = wxDynamicCast(server_sizer->GetItem(other)->GetWindow(), ServerWidget);
     }
+    else if (move == SERVER_MOVE_DOWN)
+    {
+        int other = target + 1;
+        if (other == limit) // it's already on bottom
+        {
+            return;
+        }
+        exchange = wxDynamicCast(server_sizer->GetItem(other)->GetWindow(), ServerWidget);
+    }
+
+    if (!exchange)
+    {
+        return;
+    }
+
+    ServerRecord panel_record = panel->GetRecord();
+    ServerRecord exchange_record = exchange->GetRecord();
+    std::swap(panel_record.id, exchange_record.id);
+
+    char *error_msg = nullptr;
+
+    // 1. Start the transaction
+    sqlite3_exec(db, "BEGIN TRANSACTION;", nullptr, nullptr, &error_msg);
+
+    const char *sql = "UPDATE server SET name = ?, address_type=?, address=?, port=? WHERE id = ?;";
+    sqlite3_stmt *stmt;
+
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) == SQLITE_OK)
+    {
+
+        sqlite3_bind_text(stmt, 1, panel_record.name.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 2, static_cast<int>(panel_record.address_type));
+        sqlite3_bind_text(stmt, 3, panel_record.address.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 4, panel_record.port);
+        sqlite3_bind_int(stmt, 5, panel_record.id);
+        if (sqlite3_step(stmt) != SQLITE_DONE)
+        {
+            sqlite3_finalize(stmt);
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+            return;
+        }
+        sqlite3_reset(stmt); // Reset is required to reuse the prepared statement
+
+        sqlite3_bind_text(stmt, 1, exchange_record.name.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 2, static_cast<int>(exchange_record.address_type));
+        sqlite3_bind_text(stmt, 3, exchange_record.address.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_bind_int(stmt, 4, exchange_record.port);
+        sqlite3_bind_int(stmt, 5, exchange_record.id);
+        if (sqlite3_step(stmt) != SQLITE_DONE)
+        {
+            sqlite3_finalize(stmt);
+            sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+            return;
+        };
+
+        sqlite3_finalize(stmt);
+
+        // 4. Commit the changes to disk
+        sqlite3_exec(db, "COMMIT;", nullptr, nullptr, &error_msg);
+    }
+    else
+    {
+        sqlite3_exec(db, "ROLLBACK;", nullptr, nullptr, nullptr);
+        return;
+    }
+
+    panel->ExchangeRecordId(exchange);
+
+    ServerWidget *to_rerender = move == SERVER_MOVE_UP ? panel : exchange;
+
+    server_sizer->Detach(to_rerender);
+    server_sizer->Insert(std::min(other, target), to_rerender, 0, wxALL | wxEXPAND);
+    this->server_list->GetSizer()->Layout();
+    this->server_list->FitInside();
 }
 
 void ServerWidget::OnConnect(wxCommandEvent &event)
@@ -724,8 +839,9 @@ void MainFrame::RenderServerRecord(ServerRecord record)
     {
         return;
     }
-    ServerWidget *widget = new ServerWidget(this->server_list, record);
+
     wxBoxSizer *server_sizer = (wxBoxSizer *)this->server_list->GetSizer();
+    ServerWidget *widget = new ServerWidget(this->server_list, record);
 
     server_sizer->Add(widget, 0, wxALL | wxEXPAND);
 

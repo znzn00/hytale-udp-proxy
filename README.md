@@ -13,28 +13,13 @@ g++ main.cpp ipv4_proxy.cpp ipv6_proxy.cpp proxy_common.cpp -o <executable_name>
 ```
 
 ## How to use?
-When starting it will ask for a socket in which the proxy will use, can leave it empty and will use Hytale's default port.
-```bashc
-Enter Proxy Socket (9520):
-```
-After it, enter the server address which is mandatory.
-```bashc
-Enter server address: <server address>
-```
+
 It supports the format `<address>:<port>` or just `<address>` and will connect with default 9520 port, available addresses formats are:
 * A domain, for example: `example.com`.
-* IPv4, for example: `10.0.0.1`
-* IPv6, can be defined but it won't work, it should be between square brackets like: `[fe80::1]`
+* * Including subdomains: `subdomain.example.com`
+* IPv4, for example: `192.168.1.1`
+* IPv6, it should be between square brackets like: `[2001:db8::1]`
 
-When it shows:
-```bashc
-Waiting for a client connection...
-```
-Connect to it using `127.0.0.1` or `127.0.0.1:<port>` if you chose other port than 9520 as Proxy Port.
-
-<img width="429" height="250" alt="image" src="https://github.com/user-attachments/assets/cb1abd11-4adc-4317-b10e-7be39af6c948" />
-
-You can stop it by pressing Ctrl+C once to stop.
 ## Why did I make this?
 This was made because some of my friends had issues with Hytale multiplayer, in which they couldn't connect to a dedicated servers for them to play together. **Note: Affected devices were running Windows**.
 ### Why does Hytale have issues with servers connection (non-local or invitation code)?
@@ -47,3 +32,4 @@ My next step was then watch for any UDP connection on an external server and see
 Tl;dr: The client works as it's supposed to be, in my honest opinion, is Windows being Windows in some devices.
 ## Why didn't I make it work on Linux?
 My friends that plays on Linux didn't have any issues with connecting to dedicated servers, neither when I switched to it on affected Windows devices.
+
