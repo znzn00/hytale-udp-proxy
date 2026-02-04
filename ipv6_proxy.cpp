@@ -231,3 +231,13 @@ int IPv6Proxy::disconnect()
     std::cout << "IPv6: Stopped." << std::endl;
     return 0;
 }
+
+int IPv6Proxy::get_state()
+{
+    return this->state;
+}
+
+bool IPv6Proxy::is_running()
+{
+    return this->running;
+}

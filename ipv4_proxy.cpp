@@ -232,3 +232,13 @@ int IPv4Proxy::disconnect()
     std::cout << "IPv4: Stopped." << std::endl;
     return 0;
 }
+
+int IPv4Proxy::get_state()
+{
+    return this->state;
+}
+
+bool IPv4Proxy::is_running()
+{
+    return this->running;
+}

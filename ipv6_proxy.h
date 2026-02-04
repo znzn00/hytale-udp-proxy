@@ -15,6 +15,8 @@ public:
     IPv6Proxy(int proxySocket);
     int connect(in6_addr serverIp6, int port);
     int disconnect();
+    int get_state();
+    bool is_running();
 };
 
 #endif

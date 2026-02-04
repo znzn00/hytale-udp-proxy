@@ -95,10 +95,10 @@ int test_ipv4_quic(in_addr ipv4, int port)
         char ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &local_client.sin_addr, ip, sizeof(ip));
 
-        uint16_t port = ntohs(local_client.sin_port);
+        uint16_t lport = ntohs(local_client.sin_port);
 
         std::cout << "QUIC IPv4: Connected to server " << address << ":" << port << " with " << ip
-                  << ":" << port << std::endl;
+                  << ":" << lport << std::endl;
     }
     char buffer[2048];
     int n;
@@ -195,10 +195,10 @@ int test_ipv6_quic(in6_addr ipv6, int port)
         char ip[INET6_ADDRSTRLEN];
         inet_ntop(AF_INET6, &local_client.sin6_addr, ip, sizeof(ip));
 
-        uint16_t port = ntohs(local_client.sin6_port);
+        uint16_t lport = ntohs(local_client.sin6_port);
 
         std::cout << "QUIC IPv6: Connected to server [" << address << "]:" << port << " with [" << ip
-                  << "]:" << port << std::endl;
+                  << "]:" << lport << std::endl;
     }
     char buffer[2048];
     int n;
@@ -270,6 +270,10 @@ std::tuple<eAddressType, std::string, int> resolve_server_address(std::string ad
     if (std::regex_search(address, matches, serverAddressRegex))
     {
         std::string address = matches[1].str();
+        if (address.empty())
+        {
+            return {eAddressType::Invalid, "", -1};
+        }
         if (matches[2].matched)
         {
             try

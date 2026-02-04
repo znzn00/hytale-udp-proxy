@@ -15,6 +15,8 @@ public:
     IPv4Proxy(int proxySocket);
     int connect(in_addr serverIp4, int port);
     int disconnect();
+    int get_state();
+    bool is_running();
 };
 
 #endif

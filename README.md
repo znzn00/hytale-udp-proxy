@@ -8,8 +8,16 @@ Compile it using whichever compiler you want. But make sure to have the next lib
 * wxWidgets 3.2.9
 * SQLite3 3.51.2
 
+Compiling
+
+Command Prompt:
 ```bashc
-g++ main.cpp ipv4_proxy.cpp ipv6_proxy.cpp proxy_common.cpp -o <executable_name>.exe -I"%WXWIN%\include" -I"%WXWIN%\lib\gcc_dll\mswud" -L"%WXWIN%\lib\gcc_dll" -lws2_32 -D__WXMSW__ -DUNICODE -DWXUSINGDLL -lwxmsw32ud_core -lwxbase32u
+g++ main.cpp ipv4_proxy.cpp ipv6_proxy.cpp proxy_common.cpp -o <executable_name>.exe -std=c++17 -I"${env:WXWIN}\include" -I"${env:WXWIN}\lib\gcc_dll\mswu" -D__WXMSW__ -DUNICODE -DWXUSINGDLL -L"${env:WXWIN}\lib\gcc_dll" -lwxmsw32u_core -lwxbase32u -lwxmsw32u_richtext -lws2_32 -L. -lsqlite3 -mwindows
+```
+
+Powershell:
+```powershell
+g++ main.cpp ipv4_proxy.cpp ipv6_proxy.cpp proxy_common.cpp -o <executable_name>.exe -std=c++17 -I"%WXWIN%\include" -I"%WXWIN%\lib\gcc_dll\mswu" -D__WXMSW__ -DUNICODE -DWXUSINGDLL -L"%WXWIN%\lib\gcc_dll" -lwxmsw32u_core -lwxbase32u -lwxmsw32u_richtext -lws2_32 -L. -lsqlite3 -mwindows
 ```
 
 ## How to use?
