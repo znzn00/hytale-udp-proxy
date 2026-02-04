@@ -22,11 +22,23 @@ g++ main.cpp ipv4_proxy.cpp ipv6_proxy.cpp proxy_common.cpp -o <executable_name>
 
 ## How to use?
 
+<img width="400" height="300" alt="image" src="https://github.com/user-attachments/assets/622dc2d7-4b7c-4aed-b6d6-b8374e9c0930" />
+
+First, specify proxy port, then enter a server address to directly connect to it or save it.
+
 It supports the format `<address>:<port>` or just `<address>` and will connect with default 9520 port, available addresses formats are:
 * A domain, for example: `example.com`.
 * * Including subdomains: `subdomain.example.com`
 * IPv4, for example: `192.168.1.1`
 * IPv6, it should be between square brackets like: `[2001:db8::1]`
+
+
+
+When clicking connect, it should show status as ready:
+
+<img width="400" height="300" alt="image" src="https://github.com/user-attachments/assets/ec62c3b0-d1ba-4bbf-88e7-2da9de94b420" />
+
+Use Proxy Address to connect.
 
 ## Why did I make this?
 This was made because some of my friends had issues with Hytale multiplayer, in which they couldn't connect to a dedicated servers for them to play together. **Note: Affected devices were running Windows**.
